@@ -35,7 +35,7 @@
     "@electric-sql/pglite": "^0.5.8",
     "@electric-sql/pglite-pgvector": "^0.0.9",
     "@electric-sql/pglite-socket": "^0.2.11",
-    "@types/node": "^22.19.0",
+    "@types/node": "^26.6.3",
     "@types/pg": "^8.15.6",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
