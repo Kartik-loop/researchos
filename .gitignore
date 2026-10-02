@@ -1,0 +1,13 @@
+node_modules/
+.next/
+.env*
+!.env.example
+.local/
+*.tsbuildinfo
+coverage/
+test-results/
+.DS_Store
+*.log
+*.pem
+*.key
+docs/screenshots/

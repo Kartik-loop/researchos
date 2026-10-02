@@ -1,0 +1,33 @@
+# Create a free Neon PostgreSQL database separately. Never use Render's
+# expiring free PostgreSQL instance for persistent research data.
+services:
+  - type: web
+    name: researchos
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build:hosted
+    startCommand: node scripts/start-hosted.mjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL
+        value: "true"
+      - key: DB_POOL_SIZE
+        value: "2"
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai/
+      - key: AI_CHAT_MODEL
+        value: gemini-3.8-flash
+      - key: AI_EMBEDDING_MODEL
+        value: gemini-embedding-001
+      - key: ALLOW_REGISTRATION
+        value: "false"
