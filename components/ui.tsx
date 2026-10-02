@@ -2,6 +2,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, LoaderCircle } from "lucide-react";
 import type { ReactNode } from "react";
+import { requestAPI } from "../lib/api-response";
 export function Modal({
   open,
   onOpenChange,
@@ -81,7 +82,7 @@ export function Skeleton() {
   );
 }
 export async function api<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
+  return requestAPI<T>(url, {
     ...options,
     headers: {
       ...(options?.body instanceof FormData
@@ -90,9 +91,4 @@ export async function api<T>(url: string, options?: RequestInit): Promise<T> {
       ...options?.headers,
     },
   });
-  if (res.status === 204) return undefined as T;
-  const data = await res.json();
-  if (!res.ok)
-    throw new Error(data.error || "Something went wrong. Please try again.");
-  return data as T;
 }

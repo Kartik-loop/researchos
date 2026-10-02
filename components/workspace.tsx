@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { readAPIResponse } from "../lib/api-response";
 import {
   BookOpen,
   Library,
@@ -117,8 +118,7 @@ export function Workspace() {
         setUser(null);
         return;
       }
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error);
+      const d = await readAPIResponse<{ user: User }>(res);
       setUser(d.user);
     } catch (e) {
       setBootError((e as Error).message);

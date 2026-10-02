@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { readAPIResponse } from "../lib/api-response";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -172,9 +173,13 @@ export function ResearchChat({
         signal: controller.signal,
       });
       if (!res.ok) {
-        const d = await res.json();
+        const d = await readAPIResponse<{ error?: string }>(res);
         throw new Error(d.error || "Unable to start this answer.");
       }
+      if (!res.headers.get("content-type")?.includes("text/event-stream"))
+        throw new Error(
+          "The server could not start the answer. Wait a moment, then retry.",
+        );
       if (!res.body)
         throw new Error("The response stream could not be opened.");
       const reader = res.body.getReader(),
