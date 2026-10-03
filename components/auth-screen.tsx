@@ -4,20 +4,40 @@ import { ArrowUpRight, BookOpen, LockKeyhole } from "lucide-react";
 import { api, Spinner } from "./ui";
 import type { User } from "@/server/types";
 export function AuthScreen({ onAuth }: { onAuth: (user: User) => void }) {
-  const [signup, setSignup] = useState(false),
+  const [mode, setMode] = useState<
+      "login" | "register" | "forgot-password" | "resend-verification"
+    >("login"),
+    [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const signup = mode === "register";
+  const emailOnly =
+    mode === "forgot-password" || mode === "resend-verification";
+  function changeMode(next: typeof mode) {
+    setMode(next);
+    setError("");
+    setNotice("");
+  }
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     setError("");
+    setNotice("");
     const form = new FormData(e.currentTarget);
     try {
-      const data = await api<{ user: User }>(
-        `/api/auth/${signup ? "register" : "login"}`,
-        { method: "POST", body: JSON.stringify(Object.fromEntries(form)) },
-      );
-      onAuth(data.user);
+      const data = await api<{
+        user?: User;
+        message?: string;
+        verification_required?: boolean;
+      }>(`/api/auth/${mode}`, {
+        method: "POST",
+        body: JSON.stringify(Object.fromEntries(form)),
+      });
+      if (data.user) onAuth(data.user);
+      else {
+        setNotice(data.message || "Check your email.");
+        if (data.verification_required) setMode("resend-verification");
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -59,11 +79,21 @@ export function AuthScreen({ onAuth }: { onAuth: (user: User) => void }) {
         </div>
         <div className="auth-form-panel">
           <span className="eyebrow">Your research starts here</span>
-          <h2>{signup ? "Create your workspace" : "Welcome back."}</h2>
+          <h2>
+            {mode === "forgot-password"
+              ? "Reset your password"
+              : mode === "resend-verification"
+                ? "Verify your email"
+                : signup
+                  ? "Create your workspace"
+                  : "Welcome back."}
+          </h2>
           <p className="muted">
-            {signup
-              ? "One quiet place for your next discovery."
-              : "Sign in to pick up where you left off."}
+            {emailOnly
+              ? "Enter your email address to request a secure link."
+              : signup
+                ? "One quiet place for your next discovery."
+                : "Sign in to pick up where you left off."}
           </p>
           <form onSubmit={submit}>
             {signup && (
@@ -88,42 +118,88 @@ export function AuthScreen({ onAuth }: { onAuth: (user: User) => void }) {
                 placeholder="you@university.edu"
               />
             </label>
-            <label>
-              Password
-              <input
-                name="password"
-                type="password"
-                required
-                minLength={signup ? 12 : 1}
-                maxLength={128}
-                autoComplete={signup ? "new-password" : "current-password"}
-                placeholder={
-                  signup ? "At least 12 characters" : "Your password"
-                }
-              />
-            </label>
+            {!emailOnly && (
+              <label>
+                Password
+                <input
+                  name="password"
+                  type="password"
+                  required
+                  minLength={signup ? 12 : 1}
+                  maxLength={128}
+                  autoComplete={signup ? "new-password" : "current-password"}
+                  placeholder={
+                    signup ? "At least 12 characters" : "Your password"
+                  }
+                />
+              </label>
+            )}
+            {notice && (
+              <p role="status" className="muted">
+                {notice}
+              </p>
+            )}
             {error && (
               <p className="error-banner" role="alert">
                 {error}
               </p>
             )}
             <button className="button primary auth-submit" disabled={busy}>
-              {busy ? <Spinner /> : signup ? "Create workspace" : "Sign in"}
+              {busy ? (
+                <Spinner />
+              ) : emailOnly ? (
+                "Send link"
+              ) : signup ? (
+                "Create workspace"
+              ) : (
+                "Sign in"
+              )}
               {!busy && <ArrowUpRight size={18} />}
             </button>
           </form>
-          <p className="auth-switch">
-            {signup ? "Already have a workspace?" : "New to ResearchOS?"}{" "}
-            <button
-              className="text-button"
-              onClick={() => {
-                setSignup(!signup);
-                setError("");
-              }}
-            >
-              {signup ? "Sign in" : "Create an account"}
-            </button>
-          </p>
+          <div className="auth-switch">
+            {mode !== "login" && (
+              <button
+                className="text-button"
+                disabled={busy}
+                onClick={() => changeMode("login")}
+              >
+                Back to sign in
+              </button>
+            )}
+            {mode === "login" && (
+              <>
+                <p>
+                  <button
+                    className="text-button"
+                    disabled={busy}
+                    onClick={() => changeMode("forgot-password")}
+                  >
+                    Forgot password?
+                  </button>
+                </p>
+                <p>
+                  <button
+                    className="text-button"
+                    disabled={busy}
+                    onClick={() => changeMode("resend-verification")}
+                  >
+                    Resend verification
+                  </button>
+                </p>
+                <p>
+                  New to ResearchOS?{" "}
+                  <button
+                    className="text-button"
+                    disabled={busy}
+                    onClick={() => changeMode("register")}
+                  >
+                    Create an account
+                  </button>
+                </p>
+              </>
+            )}
+          </div>
           <div className="privacy-note">
             <LockKeyhole size={14} />
             <span>Your library is private to your account.</span>

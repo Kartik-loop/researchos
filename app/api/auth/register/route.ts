@@ -3,13 +3,17 @@ import { z } from "zod";
 import { handle, jsonBody, ApiError } from "@/server/http";
 import { hashPassword, createSession, rateLimit } from "@/server/auth";
 import { query } from "@/server/db";
+import {
+  emailSchema,
+  passwordSchema,
+  verificationRequired,
+} from "@/server/account-validation";
+import { requireMailConfigured } from "@/server/mail";
+import { requestAccountEmail } from "@/server/account-tokens";
 const schema = z.object({
   name: z.string().trim().min(1).max(80),
-  email: z.email().trim().toLowerCase().max(254),
-  password: z
-    .string()
-    .min(12, "Use at least 12 characters for your password.")
-    .max(128),
+  email: emailSchema,
+  password: passwordSchema,
 });
 export const POST = handle(async (req) => {
   if (process.env.ALLOW_REGISTRATION === "false")
@@ -22,10 +26,22 @@ export const POST = handle(async (req) => {
     3600,
   );
   const id = randomUUID();
+  if (verificationRequired()) requireMailConfigured();
   await query(
     "INSERT INTO users(id,name,email,password_hash) VALUES($1,$2,$3,$4)",
     [id, data.name, data.email, await hashPassword(data.password)],
   );
+  if (verificationRequired()) {
+    await requestAccountEmail(data.email, "verify");
+    return Response.json(
+      {
+        verification_required: true,
+        message:
+          "Check your email for a verification link. If it does not arrive, use Resend verification.",
+      },
+      { status: 201 },
+    );
+  }
   await createSession(id);
   return Response.json(
     { user: { id, name: data.name, email: data.email } },

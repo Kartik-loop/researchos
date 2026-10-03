@@ -6,6 +6,8 @@
 
 A private research workspace for PDF papers: a searchable library, collections and tags, page-linked analysis, streaming research conversations, structured comparisons, and an interactive relationship graph. The application starts empty. Papers, accounts, processing state and conversations are backed by a database; no sample results stand in for functionality.
 
+Email verification and password recovery use the Gmail API. See [account security setup](docs/ACCOUNT-SECURITY.md) for credentials, safe rollout, and database maintenance. Verification stays optional until `EMAIL_VERIFICATION_REQUIRED=true`.
+
 ## Architecture
 
 ResearchOS has three running services: a **Next.js 16 / React 19** application, **PostgreSQL with pgvector**, and an independent **TypeScript ingestion worker**. The UI calls authenticated HTTP endpoints; only the server and worker access the AI provider. A one-shot migration command prepares the database before services start.

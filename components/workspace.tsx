@@ -343,6 +343,9 @@ export function Workspace() {
           <div>
             <strong>Personal workspace</strong>
             <span>{user.name}</span>
+            <span className="workspace-email" title={user.email}>
+              {user.email}
+            </span>
           </div>
         </div>
         <div className="nav-caption">WORKSPACE</div>

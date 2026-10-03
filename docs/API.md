@@ -1,24 +1,35 @@
 # ResearchOS HTTP API
 
+Account recovery endpoints (same-origin JSON POST):
+
+| Endpoint                        | Body               | Result                                    |
+| ------------------------------- | ------------------ | ----------------------------------------- |
+| `/api/auth/forgot-password`     | `{email}`          | Generic email-request acknowledgement     |
+| `/api/auth/resend-verification` | `{email}`          | Generic email-request acknowledgement     |
+| `/api/auth/reset-password`      | `{token,password}` | Changes password and revokes all sessions |
+| `/api/auth/verify-email`        | `{token}`          | Verifies email; sign in separately        |
+
+When verification is enabled, registration returns `{verification_required:true,message}` instead of a session. Unverified login returns `403` with code `EMAIL_NOT_VERIFIED`. See [configuration](ACCOUNT-SECURITY.md).
+
 All application endpoints use the authenticated `researchos_session` HttpOnly cookie. Send mutations from the configured `APP_URL` origin. Responses use JSON and `Cache-Control: no-store`; successful deletions return `204` with no body. Error responses have `{ "error": "Actionable message", "code": "OPTIONAL_CODE" }`.
 
-| Endpoint | Request | Response |
-| --- | --- | --- |
-| `GET /api/papers` | Optional `q`, `tag`, `collection` query parameters | `{papers}` with metadata, processing state, and collection IDs; detailed analysis loads on the detail endpoint |
-| `POST /api/papers` | Multipart form with exactly one `file` | `202 {paper}` after durable storage and ingestion queueing |
-| `GET /api/papers/:id` | — | `{paper}` |
-| `PATCH /api/papers/:id` | Any of `{title,tags,collection_ids}` | `{paper}`; collection assignments replace the previous set |
-| `DELETE /api/papers/:id` | — | `204`; deletes PDF, chunks, collection memberships, and ingestion job |
-| `GET /api/papers/:id/file` | — | Authenticated inline PDF |
-| `POST /api/papers/:id/retry` | — | `202 {paper}` for failed papers only |
-| `GET /api/collections` | — | `{collections}` including `paper_count` |
-| `POST /api/collections` | `{name}` | `201 {collection}` |
-| `DELETE /api/collections/:id` | — | `204`; member papers remain in the library |
-| `GET /api/conversations` | — | `{conversations}`; latest 100 conversations |
-| `GET /api/conversations/:id` | — | `{conversation,messages}` in chronological order |
-| `DELETE /api/conversations/:id` | — | `204`; includes message deletion |
-| `GET /api/graph` | — | `{nodes,edges}` for the latest 100 papers |
-| `GET /api/health` | Public endpoint | `{status,database,ai_configured}`; database outage returns `503` |
+| Endpoint                        | Request                                            | Response                                                                                                       |
+| ------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `GET /api/papers`               | Optional `q`, `tag`, `collection` query parameters | `{papers}` with metadata, processing state, and collection IDs; detailed analysis loads on the detail endpoint |
+| `POST /api/papers`              | Multipart form with exactly one `file`             | `202 {paper}` after durable storage and ingestion queueing                                                     |
+| `GET /api/papers/:id`           | —                                                  | `{paper}`                                                                                                      |
+| `PATCH /api/papers/:id`         | Any of `{title,tags,collection_ids}`               | `{paper}`; collection assignments replace the previous set                                                     |
+| `DELETE /api/papers/:id`        | —                                                  | `204`; deletes PDF, chunks, collection memberships, and ingestion job                                          |
+| `GET /api/papers/:id/file`      | —                                                  | Authenticated inline PDF                                                                                       |
+| `POST /api/papers/:id/retry`    | —                                                  | `202 {paper}` for failed papers only                                                                           |
+| `GET /api/collections`          | —                                                  | `{collections}` including `paper_count`                                                                        |
+| `POST /api/collections`         | `{name}`                                           | `201 {collection}`                                                                                             |
+| `DELETE /api/collections/:id`   | —                                                  | `204`; member papers remain in the library                                                                     |
+| `GET /api/conversations`        | —                                                  | `{conversations}`; latest 100 conversations                                                                    |
+| `GET /api/conversations/:id`    | —                                                  | `{conversation,messages}` in chronological order                                                               |
+| `DELETE /api/conversations/:id` | —                                                  | `204`; includes message deletion                                                                               |
+| `GET /api/graph`                | —                                                  | `{nodes,edges}` for the latest 100 papers                                                                      |
+| `GET /api/health`               | Public endpoint                                    | `{status,database,ai_configured}`; database outage returns `503`                                               |
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for authentication and streaming chat contracts.
 

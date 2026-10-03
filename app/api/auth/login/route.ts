@@ -4,12 +4,13 @@ import { handle, jsonBody, ApiError } from "@/server/http";
 import { verifyPassword, createSession, rateLimit } from "@/server/auth";
 import { query } from "@/server/db";
 import type { User } from "@/server/types";
+import { emailSchema } from "@/server/account-validation";
 const dummy = "scrypt:0123456789abcdef0123456789abcdef:" + "0".repeat(128);
 export const POST = handle(async (req) => {
   const data = await jsonBody(
     req,
     z.object({
-      email: z.email().trim().toLowerCase().max(254),
+      email: emailSchema,
       password: z.string().min(1).max(128),
     }),
   );
@@ -30,6 +31,6 @@ export const POST = handle(async (req) => {
   if (!rows[0] || !valid)
     throw new ApiError(401, "Email or password is incorrect.");
   const { password_hash: _, ...user } = rows[0];
-  await createSession(user.id);
+  await createSession(user.id, rows[0].password_hash);
   return Response.json({ user });
 });

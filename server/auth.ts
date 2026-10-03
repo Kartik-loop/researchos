@@ -6,7 +6,8 @@ import {
 } from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
-import { query } from "./db";
+import { query, transaction } from "./db";
+import { verificationRequired } from "./account-validation";
 import { ApiError } from "./http";
 import type { User } from "./types";
 const scrypt = promisify(scryptCallback);
@@ -25,16 +26,42 @@ export async function verifyPassword(password: string, stored: string) {
   const expected = Buffer.from(hash, "hex");
   return expected.length === key.length && timingSafeEqual(key, expected);
 }
-export async function createSession(userId: string) {
+export async function createSession(
+  userId: string,
+  expectedPasswordHash?: string,
+) {
   const jar = await cookies();
   const old = jar.get(cookieName)?.value;
   if (old)
     await query("DELETE FROM sessions WHERE token_hash=$1", [digest(old)]);
   const token = randomBytes(32).toString("base64url");
-  await query(
-    "INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '30 days')",
-    [digest(token), userId],
-  );
+  await transaction(async (db) => {
+    const { rows } = await db.query<{
+      password_hash: string;
+      email_verified_at: string | null;
+    }>(
+      "SELECT password_hash,email_verified_at FROM users WHERE id=$1 FOR UPDATE",
+      [userId],
+    );
+    if (
+      !rows[0] ||
+      (expectedPasswordHash && rows[0].password_hash !== expectedPasswordHash)
+    )
+      throw new ApiError(
+        401,
+        "Your credentials changed. Please sign in again.",
+      );
+    if (verificationRequired() && !rows[0].email_verified_at)
+      throw new ApiError(
+        403,
+        "Verify your email before signing in. Use Resend verification to request a link.",
+        "EMAIL_NOT_VERIFIED",
+      );
+    await db.query(
+      "INSERT INTO sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '30 days')",
+      [digest(token), userId],
+    );
+  });
   jar.set(cookieName, token, {
     httpOnly: true,
     secure:
@@ -49,8 +76,8 @@ export async function requireUser(): Promise<User> {
   const token = (await cookies()).get(cookieName)?.value;
   if (!token) throw new ApiError(401, "Please sign in to your workspace.");
   const { rows } = await query<User>(
-    "SELECT u.id,u.name,u.email FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token_hash=$1 AND s.expires_at>now()",
-    [digest(token)],
+    "SELECT u.id,u.name,u.email FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token_hash=$1 AND s.expires_at>now() AND (NOT $2::boolean OR u.email_verified_at IS NOT NULL)",
+    [digest(token), verificationRequired()],
   );
   if (!rows[0])
     throw new ApiError(401, "Your session expired. Please sign in again.");
